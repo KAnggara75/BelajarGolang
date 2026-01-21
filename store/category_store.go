@@ -7,7 +7,8 @@ import (
 )
 
 var (
-	ErrNotFound = errors.New("category not found")
+	ErrNotFound   = errors.New("category not found")
+	ErrNameExists = errors.New("category name already exists")
 )
 
 // CategoryStore is an in-memory store for categories
@@ -43,11 +44,18 @@ func (s *CategoryStore) GetByID(id int) (models.Category, error) {
 }
 
 // Create adds a new category
-func (s *CategoryStore) Create(cat models.Category) models.Category {
+func (s *CategoryStore) Create(cat models.Category) (models.Category, error) {
+	// Check if name already exists
+	for _, existing := range s.categories {
+		if existing.Name == cat.Name {
+			return models.Category{}, ErrNameExists
+		}
+	}
+
 	cat.ID = s.nextID
 	s.nextID++
 	s.categories[cat.ID] = cat
-	return cat
+	return cat, nil
 }
 
 // Update updates an existing category
@@ -82,6 +90,6 @@ func (s *CategoryStore) SeedData() {
 	}
 
 	for _, cat := range initialData {
-		s.Create(cat)
+		_, _ = s.Create(cat)
 	}
 }

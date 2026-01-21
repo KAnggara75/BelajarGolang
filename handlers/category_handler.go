@@ -91,7 +91,15 @@ func (h *CategoryHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	created := h.store.Create(cat)
+	created, err := h.store.Create(cat)
+	if err != nil {
+		if err == store.ErrNameExists {
+			h.sendError(w, http.StatusConflict, "Category name already exists")
+			return
+		}
+		h.sendError(w, http.StatusInternalServerError, "Failed to create category")
+		return
+	}
 	h.sendSuccess(w, http.StatusCreated, "Category created successfully", created)
 }
 
