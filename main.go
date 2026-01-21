@@ -1,0 +1,31 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+
+	"github.com/KAnggara75/BelajarGolang/handlers"
+	"github.com/KAnggara75/BelajarGolang/store"
+)
+
+func main() {
+	// Initialize the in-memory store
+	categoryStore := store.NewCategoryStore()
+
+	// Initialize handlers
+	categoryHandler := handlers.NewCategoryHandler(categoryStore)
+
+	// Setup routes
+	http.Handle("/categories", categoryHandler)
+
+	// Start server
+	port := ":8080"
+	fmt.Printf("🚀 Server starting on http://localhost%s\n", port)
+	fmt.Println("📦 Available endpoints:")
+	fmt.Println("   GET    /categories      - Get all categories")
+
+	if err := http.ListenAndServe(port, nil); err != nil {
+		log.Fatal(err)
+	}
+}
