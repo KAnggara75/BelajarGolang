@@ -49,3 +49,18 @@ func (s *CategoryStore) Create(cat models.Category) models.Category {
 	s.categories[cat.ID] = cat
 	return cat
 }
+
+// SeedData initializes the store with sample data
+func (s *CategoryStore) SeedData() {
+	initialData := []models.Category{
+		{Name: "Electronics", Description: "Electronic devices and gadgets"},
+		{Name: "Clothing", Description: "Apparel and fashion items"},
+		{Name: "Books", Description: "Books and reading materials"},
+		{Name: "Food & Beverages", Description: "Food products and drinks"},
+		{Name: "Sports", Description: "Sports equipment and accessories"},
+	}
+
+	for _, cat := range initialData {
+		s.Create(cat)
+	}
+}

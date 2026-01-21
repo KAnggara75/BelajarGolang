@@ -12,6 +12,7 @@ import (
 func main() {
 	// Initialize the in-memory store
 	categoryStore := store.NewCategoryStore()
+	categoryStore.SeedData()
 
 	// Initialize handlers
 	categoryHandler := handlers.NewCategoryHandler(categoryStore)
