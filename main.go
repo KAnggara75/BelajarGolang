@@ -18,12 +18,15 @@ func main() {
 
 	// Setup routes
 	http.Handle("/categories", categoryHandler)
+	http.Handle("/categories/", categoryHandler)
 
 	// Start server
 	port := ":8080"
 	fmt.Printf("🚀 Server starting on http://localhost%s\n", port)
 	fmt.Println("📦 Available endpoints:")
 	fmt.Println("   GET    /categories      - Get all categories")
+	fmt.Println("   POST   /categories      - Create a category")
+	fmt.Println("   GET    /categories/{id} - Get a category by ID")
 
 	if err := http.ListenAndServe(port, nil); err != nil {
 		log.Fatal(err)

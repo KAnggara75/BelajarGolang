@@ -1,7 +1,13 @@
 package store
 
 import (
+	"errors"
+
 	"github.com/KAnggara75/BelajarGolang/models"
+)
+
+var (
+	ErrNotFound = errors.New("category not found")
 )
 
 // CategoryStore is an in-memory store for categories
@@ -25,4 +31,21 @@ func (s *CategoryStore) GetAll() []models.Category {
 		result = append(result, cat)
 	}
 	return result
+}
+
+// GetByID returns a category by ID
+func (s *CategoryStore) GetByID(id int) (models.Category, error) {
+	cat, exists := s.categories[id]
+	if !exists {
+		return models.Category{}, ErrNotFound
+	}
+	return cat, nil
+}
+
+// Create adds a new category
+func (s *CategoryStore) Create(cat models.Category) models.Category {
+	cat.ID = s.nextID
+	s.nextID++
+	s.categories[cat.ID] = cat
+	return cat
 }

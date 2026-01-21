@@ -3,8 +3,10 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 
+	"github.com/KAnggara75/BelajarGolang/models"
 	"github.com/KAnggara75/BelajarGolang/store"
 )
 
@@ -29,14 +31,30 @@ func (h *CategoryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path = strings.TrimPrefix(path, "/")
 
 	if path == "" {
-		// Handle collection routes: GET /categories
+		// Handle collection routes: GET /categories, POST /categories
 		switch r.Method {
 		case http.MethodGet:
 			h.GetAll(w, r)
+		case http.MethodPost:
+			h.Create(w, r)
 		default:
 			h.methodNotAllowed(w)
 		}
 		return
+	}
+
+	// Handle single resource routes: GET/PUT/DELETE /categories/{id}
+	id, err := strconv.Atoi(path)
+	if err != nil {
+		h.sendError(w, http.StatusBadRequest, "Invalid category ID")
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		h.GetByID(w, r, id)
+	default:
+		h.methodNotAllowed(w)
 	}
 }
 
@@ -44,6 +62,33 @@ func (h *CategoryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h *CategoryHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	categories := h.store.GetAll()
 	h.sendSuccess(w, http.StatusOK, "Categories retrieved successfully", categories)
+}
+
+// GetByID returns a single category
+func (h *CategoryHandler) GetByID(w http.ResponseWriter, r *http.Request, id int) {
+	category, err := h.store.GetByID(id)
+	if err != nil {
+		h.sendError(w, http.StatusNotFound, "Category not found")
+		return
+	}
+	h.sendSuccess(w, http.StatusOK, "Category retrieved successfully", category)
+}
+
+// Create adds a new category
+func (h *CategoryHandler) Create(w http.ResponseWriter, r *http.Request) {
+	var cat models.Category
+	if err := json.NewDecoder(r.Body).Decode(&cat); err != nil {
+		h.sendError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if cat.Name == "" {
+		h.sendError(w, http.StatusBadRequest, "Name is required")
+		return
+	}
+
+	created := h.store.Create(cat)
+	h.sendSuccess(w, http.StatusCreated, "Category created successfully", created)
 }
 
 func (h *CategoryHandler) sendSuccess(w http.ResponseWriter, status int, message string, data interface{}) {
