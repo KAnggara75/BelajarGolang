@@ -53,6 +53,10 @@ func (h *CategoryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		h.GetByID(w, r, id)
+	case http.MethodPut:
+		h.Update(w, r, id)
+	case http.MethodDelete:
+		h.Delete(w, r, id)
 	default:
 		h.methodNotAllowed(w)
 	}
@@ -89,6 +93,36 @@ func (h *CategoryHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	created := h.store.Create(cat)
 	h.sendSuccess(w, http.StatusCreated, "Category created successfully", created)
+}
+
+// Update updates an existing category
+func (h *CategoryHandler) Update(w http.ResponseWriter, r *http.Request, id int) {
+	var cat models.Category
+	if err := json.NewDecoder(r.Body).Decode(&cat); err != nil {
+		h.sendError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if cat.Name == "" {
+		h.sendError(w, http.StatusBadRequest, "Name is required")
+		return
+	}
+
+	updated, err := h.store.Update(id, cat)
+	if err != nil {
+		h.sendError(w, http.StatusNotFound, "Category not found")
+		return
+	}
+	h.sendSuccess(w, http.StatusOK, "Category updated successfully", updated)
+}
+
+// Delete removes a category
+func (h *CategoryHandler) Delete(w http.ResponseWriter, r *http.Request, id int) {
+	if err := h.store.Delete(id); err != nil {
+		h.sendError(w, http.StatusNotFound, "Category not found")
+		return
+	}
+	h.sendSuccess(w, http.StatusOK, "Category deleted successfully", nil)
 }
 
 func (h *CategoryHandler) sendSuccess(w http.ResponseWriter, status int, message string, data interface{}) {

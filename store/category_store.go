@@ -50,6 +50,27 @@ func (s *CategoryStore) Create(cat models.Category) models.Category {
 	return cat
 }
 
+// Update updates an existing category
+func (s *CategoryStore) Update(id int, cat models.Category) (models.Category, error) {
+	if _, exists := s.categories[id]; !exists {
+		return models.Category{}, ErrNotFound
+	}
+
+	cat.ID = id
+	s.categories[id] = cat
+	return cat, nil
+}
+
+// Delete removes a category by ID
+func (s *CategoryStore) Delete(id int) error {
+	if _, exists := s.categories[id]; !exists {
+		return ErrNotFound
+	}
+
+	delete(s.categories, id)
+	return nil
+}
+
 // SeedData initializes the store with sample data
 func (s *CategoryStore) SeedData() {
 	initialData := []models.Category{
