@@ -14,20 +14,28 @@ import (
 
 // mockProductRepository is a mock implementation of ProductRepository for testing
 type mockProductRepository struct {
-	products map[int]models.Product
-	nextID   int
+	products   map[int]models.Product
+	categories map[int]models.Category
+	nextID     int
 }
 
 func newMockProductRepository() *mockProductRepository {
 	return &mockProductRepository{
-		products: make(map[int]models.Product),
-		nextID:   1,
+		products:   make(map[int]models.Product),
+		categories: make(map[int]models.Category),
+		nextID:     1,
 	}
 }
 
 func (m *mockProductRepository) GetAll(ctx context.Context) ([]models.Product, error) {
 	result := make([]models.Product, 0, len(m.products))
 	for _, p := range m.products {
+		// Attach category if exists
+		if p.CategoryID > 0 {
+			if cat, ok := m.categories[p.CategoryID]; ok {
+				p.Category = &cat
+			}
+		}
 		result = append(result, p)
 	}
 	return result, nil
@@ -38,7 +46,31 @@ func (m *mockProductRepository) GetByID(ctx context.Context, id int) (models.Pro
 	if !exists {
 		return models.Product{}, repository.ErrProductNotFound
 	}
+	// Attach category if exists
+	if p.CategoryID > 0 {
+		if cat, ok := m.categories[p.CategoryID]; ok {
+			p.Category = &cat
+		}
+	}
 	return p, nil
+}
+
+func (m *mockProductRepository) GetByCategory(ctx context.Context, categoryID int) ([]models.Product, error) {
+	result := make([]models.Product, 0)
+	for _, p := range m.products {
+		if p.CategoryID == categoryID {
+			if cat, ok := m.categories[p.CategoryID]; ok {
+				p.Category = &cat
+			}
+			result = append(result, p)
+		}
+	}
+	return result, nil
+}
+
+func (m *mockProductRepository) CategoryExists(ctx context.Context, categoryID int) (bool, error) {
+	_, exists := m.categories[categoryID]
+	return exists, nil
 }
 
 func (m *mockProductRepository) Create(ctx context.Context, p models.Product) (models.Product, error) {
@@ -46,6 +78,13 @@ func (m *mockProductRepository) Create(ctx context.Context, p models.Product) (m
 	for _, existing := range m.products {
 		if existing.Name == p.Name {
 			return models.Product{}, repository.ErrProductNameExists
+		}
+	}
+
+	// Check if category exists (if specified)
+	if p.CategoryID > 0 {
+		if _, exists := m.categories[p.CategoryID]; !exists {
+			return models.Product{}, repository.ErrProductCategoryNotFound
 		}
 	}
 
@@ -58,6 +97,13 @@ func (m *mockProductRepository) Create(ctx context.Context, p models.Product) (m
 func (m *mockProductRepository) Update(ctx context.Context, id int, p models.Product) (models.Product, error) {
 	if _, exists := m.products[id]; !exists {
 		return models.Product{}, repository.ErrProductNotFound
+	}
+
+	// Check if category exists (if specified)
+	if p.CategoryID > 0 {
+		if _, exists := m.categories[p.CategoryID]; !exists {
+			return models.Product{}, repository.ErrProductCategoryNotFound
+		}
 	}
 
 	p.ID = id
@@ -74,14 +120,22 @@ func (m *mockProductRepository) Delete(ctx context.Context, id int) error {
 	return nil
 }
 
+// SeedCategories adds sample categories for testing
+func (m *mockProductRepository) SeedCategories() {
+	m.categories[1] = models.Category{ID: 1, Name: "Electronics", Description: "Electronic devices"}
+	m.categories[2] = models.Category{ID: 2, Name: "Clothing", Description: "Apparel items"}
+	m.categories[3] = models.Category{ID: 3, Name: "Books", Description: "Books and reading"}
+}
+
 // SeedData adds sample data for testing
 func (m *mockProductRepository) SeedData() {
+	m.SeedCategories()
 	initialData := []models.Product{
-		{Name: "iPhone 15 Pro", Price: 999.99, Stock: 50},
-		{Name: "MacBook Pro M3", Price: 2499.99, Stock: 25},
-		{Name: "AirPods Pro", Price: 249.99, Stock: 100},
-		{Name: "iPad Air", Price: 599.99, Stock: 40},
-		{Name: "Apple Watch Series 9", Price: 399.99, Stock: 60},
+		{Name: "iPhone 15 Pro", Price: 999.99, Stock: 50, CategoryID: 1},
+		{Name: "MacBook Pro M3", Price: 2499.99, Stock: 25, CategoryID: 1},
+		{Name: "AirPods Pro", Price: 249.99, Stock: 100, CategoryID: 1},
+		{Name: "iPad Air", Price: 599.99, Stock: 40, CategoryID: 1},
+		{Name: "Apple Watch Series 9", Price: 399.99, Stock: 60, CategoryID: 1},
 	}
 
 	for _, p := range initialData {
@@ -92,6 +146,7 @@ func (m *mockProductRepository) SeedData() {
 // setupProductTestHandler creates a fresh handler with an empty mock repository for testing
 func setupProductTestHandler() *ProductHandler {
 	repo := newMockProductRepository()
+	repo.SeedCategories() // Always seed categories
 	return NewProductHandler(repo)
 }
 
@@ -169,6 +224,64 @@ func TestGetAllProducts_WithData(t *testing.T) {
 	}
 }
 
+// TestGetProductsByCategory tests GET /products?category_id=1
+func TestGetProductsByCategory(t *testing.T) {
+	handler := setupProductTestHandlerWithData()
+
+	req := httptest.NewRequest(http.MethodGet, "/products?category_id=1", nil)
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("Expected status %d, got %d", http.StatusOK, rec.Code)
+	}
+
+	var response Response
+	if err := json.NewDecoder(rec.Body).Decode(&response); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	if !response.Success {
+		t.Error("Expected success to be true")
+	}
+
+	data, ok := response.Data.([]any)
+	if !ok {
+		t.Fatalf("Expected data to be an array, got %T", response.Data)
+	}
+	if len(data) != 5 {
+		t.Errorf("Expected 5 products in category 1, got %d", len(data))
+	}
+}
+
+// TestGetProductsByCategory_InvalidCategoryID tests GET /products with invalid category_id
+func TestGetProductsByCategory_InvalidCategoryID(t *testing.T) {
+	handler := setupProductTestHandlerWithData()
+
+	req := httptest.NewRequest(http.MethodGet, "/products?category_id=abc", nil)
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, rec.Code)
+	}
+
+	var response Response
+	if err := json.NewDecoder(rec.Body).Decode(&response); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	if response.Success {
+		t.Error("Expected success to be false")
+	}
+
+	if response.Message != "Invalid category_id parameter" {
+		t.Errorf("Expected message 'Invalid category_id parameter', got '%s'", response.Message)
+	}
+}
+
 // TestGetProductByID_Success tests GET /products/{id} with valid ID
 func TestGetProductByID_Success(t *testing.T) {
 	handler := setupProductTestHandlerWithData()
@@ -203,6 +316,11 @@ func TestGetProductByID_Success(t *testing.T) {
 
 	if data["name"] != "iPhone 15 Pro" {
 		t.Errorf("Expected name 'iPhone 15 Pro', got '%v'", data["name"])
+	}
+
+	// Check category is included
+	if data["category_id"].(float64) != 1 {
+		t.Errorf("Expected category_id 1, got '%v'", data["category_id"])
 	}
 }
 
@@ -260,14 +378,15 @@ func TestGetProductByID_InvalidID(t *testing.T) {
 	}
 }
 
-// TestCreateProduct_Success tests POST /products with valid data
+// TestCreateProduct_Success tests POST /products with valid data including category
 func TestCreateProduct_Success(t *testing.T) {
 	handler := setupProductTestHandler()
 
 	product := models.Product{
-		Name:  "Test Product",
-		Price: 99.99,
-		Stock: 10,
+		Name:       "Test Product",
+		Price:      99.99,
+		Stock:      10,
+		CategoryID: 1, // Electronics
 	}
 
 	body, _ := json.Marshal(product)
@@ -306,6 +425,46 @@ func TestCreateProduct_Success(t *testing.T) {
 
 	if data["name"] != "Test Product" {
 		t.Errorf("Expected name 'Test Product', got '%v'", data["name"])
+	}
+
+	if data["category_id"].(float64) != 1 {
+		t.Errorf("Expected category_id 1, got '%v'", data["category_id"])
+	}
+}
+
+// TestCreateProduct_InvalidCategory tests POST /products with non-existent category
+func TestCreateProduct_InvalidCategory(t *testing.T) {
+	handler := setupProductTestHandler()
+
+	product := models.Product{
+		Name:       "Test Product",
+		Price:      99.99,
+		Stock:      10,
+		CategoryID: 999, // Non-existent category
+	}
+
+	body, _ := json.Marshal(product)
+	req := httptest.NewRequest(http.MethodPost, "/products", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, rec.Code)
+	}
+
+	var response Response
+	if err := json.NewDecoder(rec.Body).Decode(&response); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	if response.Success {
+		t.Error("Expected success to be false")
+	}
+
+	if response.Message != "Category not found" {
+		t.Errorf("Expected message 'Category not found', got '%s'", response.Message)
 	}
 }
 
@@ -419,9 +578,10 @@ func TestCreateProduct_DuplicateName(t *testing.T) {
 	handler := setupProductTestHandlerWithData()
 
 	product := models.Product{
-		Name:  "iPhone 15 Pro", // Already exists in seed data
-		Price: 999.99,
-		Stock: 10,
+		Name:       "iPhone 15 Pro", // Already exists in seed data
+		Price:      999.99,
+		Stock:      10,
+		CategoryID: 1,
 	}
 
 	body, _ := json.Marshal(product)
@@ -482,9 +642,10 @@ func TestUpdateProduct_Success(t *testing.T) {
 	handler := setupProductTestHandlerWithData()
 
 	product := models.Product{
-		Name:  "Updated iPhone",
-		Price: 1099.99,
-		Stock: 75,
+		Name:       "Updated iPhone",
+		Price:      1099.99,
+		Stock:      75,
+		CategoryID: 2, // Change to Clothing
 	}
 
 	body, _ := json.Marshal(product)
@@ -518,6 +679,46 @@ func TestUpdateProduct_Success(t *testing.T) {
 
 	if data["name"] != "Updated iPhone" {
 		t.Errorf("Expected name 'Updated iPhone', got '%v'", data["name"])
+	}
+
+	if data["category_id"].(float64) != 2 {
+		t.Errorf("Expected category_id 2, got '%v'", data["category_id"])
+	}
+}
+
+// TestUpdateProduct_InvalidCategory tests PUT /products/{id} with invalid category
+func TestUpdateProduct_InvalidCategory(t *testing.T) {
+	handler := setupProductTestHandlerWithData()
+
+	product := models.Product{
+		Name:       "Updated iPhone",
+		Price:      1099.99,
+		Stock:      75,
+		CategoryID: 999, // Non-existent
+	}
+
+	body, _ := json.Marshal(product)
+	req := httptest.NewRequest(http.MethodPut, "/products/1", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("Expected status %d, got %d", http.StatusBadRequest, rec.Code)
+	}
+
+	var response Response
+	if err := json.NewDecoder(rec.Body).Decode(&response); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	if response.Success {
+		t.Error("Expected success to be false")
+	}
+
+	if response.Message != "Category not found" {
+		t.Errorf("Expected message 'Category not found', got '%s'", response.Message)
 	}
 }
 
@@ -652,15 +853,16 @@ func TestProductMethodNotAllowed_Collection(t *testing.T) {
 	}
 }
 
-// TestProductCRUDFlow tests a complete CRUD flow for products
+// TestProductCRUDFlow tests a complete CRUD flow for products with category
 func TestProductCRUDFlow(t *testing.T) {
 	handler := setupProductTestHandler()
 
-	// 1. Create a product
+	// 1. Create a product with category
 	createBody, _ := json.Marshal(models.Product{
-		Name:  "Test Product",
-		Price: 99.99,
-		Stock: 10,
+		Name:       "Test Product",
+		Price:      99.99,
+		Stock:      10,
+		CategoryID: 1,
 	})
 	createReq := httptest.NewRequest(http.MethodPost, "/products", bytes.NewBuffer(createBody))
 	createReq.Header.Set("Content-Type", "application/json")
@@ -682,11 +884,12 @@ func TestProductCRUDFlow(t *testing.T) {
 		t.Fatalf("Get failed: expected status %d, got %d", http.StatusOK, getRec.Code)
 	}
 
-	// 3. Update the product
+	// 3. Update the product with new category
 	updateBody, _ := json.Marshal(models.Product{
-		Name:  "Updated Product",
-		Price: 199.99,
-		Stock: 20,
+		Name:       "Updated Product",
+		Price:      199.99,
+		Stock:      20,
+		CategoryID: 2, // Change category
 	})
 	updateReq := httptest.NewRequest(http.MethodPut, "/products/1", bytes.NewBuffer(updateBody))
 	updateReq.Header.Set("Content-Type", "application/json")
@@ -712,6 +915,9 @@ func TestProductCRUDFlow(t *testing.T) {
 	data := verifyResponse.Data.(map[string]any)
 	if data["name"] != "Updated Product" {
 		t.Errorf("Update not persisted: expected 'Updated Product', got '%v'", data["name"])
+	}
+	if data["category_id"].(float64) != 2 {
+		t.Errorf("Category not updated: expected 2, got '%v'", data["category_id"])
 	}
 
 	// 5. Delete the product

@@ -24,6 +24,20 @@ func (h *ProductHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/products")
 	path = strings.TrimPrefix(path, "/")
 
+	// Check for query parameter to filter by category
+	if path == "" && r.Method == http.MethodGet {
+		categoryIDStr := r.URL.Query().Get("category_id")
+		if categoryIDStr != "" {
+			categoryID, err := strconv.Atoi(categoryIDStr)
+			if err != nil {
+				h.sendError(w, http.StatusBadRequest, "Invalid category_id parameter")
+				return
+			}
+			h.GetByCategory(w, r, categoryID)
+			return
+		}
+	}
+
 	if path == "" {
 		// Handle collection routes: GET /products, POST /products
 		switch r.Method {
@@ -59,6 +73,16 @@ func (h *ProductHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // GetAll returns all products
 func (h *ProductHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	products, err := h.repo.GetAll(r.Context())
+	if err != nil {
+		h.sendError(w, http.StatusInternalServerError, "Failed to retrieve products")
+		return
+	}
+	h.sendSuccess(w, http.StatusOK, "Products retrieved successfully", products)
+}
+
+// GetByCategory returns products filtered by category
+func (h *ProductHandler) GetByCategory(w http.ResponseWriter, r *http.Request, categoryID int) {
+	products, err := h.repo.GetByCategory(r.Context(), categoryID)
 	if err != nil {
 		h.sendError(w, http.StatusInternalServerError, "Failed to retrieve products")
 		return
@@ -109,6 +133,10 @@ func (h *ProductHandler) Create(w http.ResponseWriter, r *http.Request) {
 			h.sendError(w, http.StatusConflict, "Product name already exists")
 			return
 		}
+		if err == repository.ErrProductCategoryNotFound {
+			h.sendError(w, http.StatusBadRequest, "Category not found")
+			return
+		}
 		h.sendError(w, http.StatusInternalServerError, "Failed to create product")
 		return
 	}
@@ -142,6 +170,10 @@ func (h *ProductHandler) Update(w http.ResponseWriter, r *http.Request, id int) 
 	if err != nil {
 		if err == repository.ErrProductNotFound {
 			h.sendError(w, http.StatusNotFound, "Product not found")
+			return
+		}
+		if err == repository.ErrProductCategoryNotFound {
+			h.sendError(w, http.StatusBadRequest, "Category not found")
 			return
 		}
 		h.sendError(w, http.StatusInternalServerError, "Failed to update product")

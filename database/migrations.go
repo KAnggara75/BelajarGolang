@@ -22,9 +22,20 @@ func RunMigrations(db *pgx.Conn) error {
 			name VARCHAR(255) NOT NULL UNIQUE,
 			price DECIMAL(10, 2) NOT NULL DEFAULT 0,
 			stock INTEGER NOT NULL DEFAULT 0,
+			category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		)`,
+		// Add category_id column if it doesn't exist (for existing databases)
+		`DO $$ 
+		BEGIN
+			IF NOT EXISTS (
+				SELECT 1 FROM information_schema.columns 
+				WHERE table_name = 'products' AND column_name = 'category_id'
+			) THEN
+				ALTER TABLE products ADD COLUMN category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL;
+			END IF;
+		END $$`,
 	}
 
 	for _, migration := range migrations {
@@ -91,23 +102,24 @@ func SeedProducts(db *pgx.Conn) error {
 		return nil
 	}
 
-	// Seed initial data
+	// Seed initial data with category_id (all Electronics = category_id 1)
 	seedData := []struct {
-		Name  string
-		Price float64
-		Stock int
+		Name       string
+		Price      float64
+		Stock      int
+		CategoryID int
 	}{
-		{"iPhone 15 Pro", 999.99, 50},
-		{"MacBook Pro M3", 2499.99, 25},
-		{"AirPods Pro", 249.99, 100},
-		{"iPad Air", 599.99, 40},
-		{"Apple Watch Series 9", 399.99, 60},
+		{"iPhone 15 Pro", 999.99, 50, 1},
+		{"MacBook Pro M3", 2499.99, 25, 1},
+		{"AirPods Pro", 249.99, 100, 1},
+		{"iPad Air", 599.99, 40, 1},
+		{"Apple Watch Series 9", 399.99, 60, 1},
 	}
 
 	for _, data := range seedData {
 		_, err := db.Exec(context.Background(),
-			"INSERT INTO products (name, price, stock) VALUES ($1, $2, $3)",
-			data.Name, data.Price, data.Stock)
+			"INSERT INTO products (name, price, stock, category_id) VALUES ($1, $2, $3, $4)",
+			data.Name, data.Price, data.Stock, data.CategoryID)
 		if err != nil {
 			return err
 		}
