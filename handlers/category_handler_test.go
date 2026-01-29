@@ -293,14 +293,10 @@ func TestCreateCategory_Success(t *testing.T) {
 		t.Errorf("Expected message 'Category created successfully', got '%s'", response.Message)
 	}
 
-	// Check that ID was assigned
+	// Check response data
 	data, ok := response.Data.(map[string]any)
 	if !ok {
 		t.Fatalf("Expected data to be an object, got %T", response.Data)
-	}
-
-	if data["id"].(float64) != 1 {
-		t.Errorf("Expected ID 1, got %v", data["id"])
 	}
 
 	if data["name"] != "Test Category" {

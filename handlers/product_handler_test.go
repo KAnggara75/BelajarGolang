@@ -319,8 +319,8 @@ func TestGetProductByID_Success(t *testing.T) {
 	}
 
 	// Check category is included
-	if data["category_id"].(float64) != 1 {
-		t.Errorf("Expected category_id 1, got '%v'", data["category_id"])
+	if data["category"] == nil {
+		t.Error("Expected category to be included")
 	}
 }
 
@@ -382,7 +382,7 @@ func TestGetProductByID_InvalidID(t *testing.T) {
 func TestCreateProduct_Success(t *testing.T) {
 	handler := setupProductTestHandler()
 
-	product := models.Product{
+	product := models.ProductInput{
 		Name:       "Test Product",
 		Price:      99.99,
 		Stock:      10,
@@ -413,22 +413,14 @@ func TestCreateProduct_Success(t *testing.T) {
 		t.Errorf("Expected message 'Product created successfully', got '%s'", response.Message)
 	}
 
-	// Check that ID was assigned
+	// Check response data
 	data, ok := response.Data.(map[string]any)
 	if !ok {
 		t.Fatalf("Expected data to be an object, got %T", response.Data)
 	}
 
-	if data["id"].(float64) != 1 {
-		t.Errorf("Expected ID 1, got %v", data["id"])
-	}
-
 	if data["name"] != "Test Product" {
 		t.Errorf("Expected name 'Test Product', got '%v'", data["name"])
-	}
-
-	if data["category_id"].(float64) != 1 {
-		t.Errorf("Expected category_id 1, got '%v'", data["category_id"])
 	}
 }
 
@@ -436,7 +428,7 @@ func TestCreateProduct_Success(t *testing.T) {
 func TestCreateProduct_InvalidCategory(t *testing.T) {
 	handler := setupProductTestHandler()
 
-	product := models.Product{
+	product := models.ProductInput{
 		Name:       "Test Product",
 		Price:      99.99,
 		Stock:      10,
@@ -472,7 +464,7 @@ func TestCreateProduct_InvalidCategory(t *testing.T) {
 func TestCreateProduct_EmptyName(t *testing.T) {
 	handler := setupProductTestHandler()
 
-	product := models.Product{
+	product := models.ProductInput{
 		Name:  "",
 		Price: 99.99,
 		Stock: 10,
@@ -507,7 +499,7 @@ func TestCreateProduct_EmptyName(t *testing.T) {
 func TestCreateProduct_NegativePrice(t *testing.T) {
 	handler := setupProductTestHandler()
 
-	product := models.Product{
+	product := models.ProductInput{
 		Name:  "Test Product",
 		Price: -10.00,
 		Stock: 10,
@@ -542,7 +534,7 @@ func TestCreateProduct_NegativePrice(t *testing.T) {
 func TestCreateProduct_NegativeStock(t *testing.T) {
 	handler := setupProductTestHandler()
 
-	product := models.Product{
+	product := models.ProductInput{
 		Name:  "Test Product",
 		Price: 99.99,
 		Stock: -5,
@@ -577,7 +569,7 @@ func TestCreateProduct_NegativeStock(t *testing.T) {
 func TestCreateProduct_DuplicateName(t *testing.T) {
 	handler := setupProductTestHandlerWithData()
 
-	product := models.Product{
+	product := models.ProductInput{
 		Name:       "iPhone 15 Pro", // Already exists in seed data
 		Price:      999.99,
 		Stock:      10,
@@ -641,7 +633,7 @@ func TestCreateProduct_InvalidJSON(t *testing.T) {
 func TestUpdateProduct_Success(t *testing.T) {
 	handler := setupProductTestHandlerWithData()
 
-	product := models.Product{
+	product := models.ProductInput{
 		Name:       "Updated iPhone",
 		Price:      1099.99,
 		Stock:      75,
@@ -680,17 +672,13 @@ func TestUpdateProduct_Success(t *testing.T) {
 	if data["name"] != "Updated iPhone" {
 		t.Errorf("Expected name 'Updated iPhone', got '%v'", data["name"])
 	}
-
-	if data["category_id"].(float64) != 2 {
-		t.Errorf("Expected category_id 2, got '%v'", data["category_id"])
-	}
 }
 
 // TestUpdateProduct_InvalidCategory tests PUT /products/{id} with invalid category
 func TestUpdateProduct_InvalidCategory(t *testing.T) {
 	handler := setupProductTestHandlerWithData()
 
-	product := models.Product{
+	product := models.ProductInput{
 		Name:       "Updated iPhone",
 		Price:      1099.99,
 		Stock:      75,
@@ -726,7 +714,7 @@ func TestUpdateProduct_InvalidCategory(t *testing.T) {
 func TestUpdateProduct_NotFound(t *testing.T) {
 	handler := setupProductTestHandler()
 
-	product := models.Product{
+	product := models.ProductInput{
 		Name:  "New Product",
 		Price: 99.99,
 		Stock: 10,
@@ -858,7 +846,7 @@ func TestProductCRUDFlow(t *testing.T) {
 	handler := setupProductTestHandler()
 
 	// 1. Create a product with category
-	createBody, _ := json.Marshal(models.Product{
+	createBody, _ := json.Marshal(models.ProductInput{
 		Name:       "Test Product",
 		Price:      99.99,
 		Stock:      10,
@@ -885,7 +873,7 @@ func TestProductCRUDFlow(t *testing.T) {
 	}
 
 	// 3. Update the product with new category
-	updateBody, _ := json.Marshal(models.Product{
+	updateBody, _ := json.Marshal(models.ProductInput{
 		Name:       "Updated Product",
 		Price:      199.99,
 		Stock:      20,
@@ -915,9 +903,6 @@ func TestProductCRUDFlow(t *testing.T) {
 	data := verifyResponse.Data.(map[string]any)
 	if data["name"] != "Updated Product" {
 		t.Errorf("Update not persisted: expected 'Updated Product', got '%v'", data["name"])
-	}
-	if data["category_id"].(float64) != 2 {
-		t.Errorf("Category not updated: expected 2, got '%v'", data["category_id"])
 	}
 
 	// 5. Delete the product

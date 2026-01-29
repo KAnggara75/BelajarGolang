@@ -106,26 +106,28 @@ func (h *ProductHandler) GetByID(w http.ResponseWriter, r *http.Request, id int)
 
 // Create adds a new product
 func (h *ProductHandler) Create(w http.ResponseWriter, r *http.Request) {
-	var product models.Product
-	if err := json.NewDecoder(r.Body).Decode(&product); err != nil {
+	var input models.ProductInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		h.sendError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
-	if product.Name == "" {
+	if input.Name == "" {
 		h.sendError(w, http.StatusBadRequest, "Name is required")
 		return
 	}
 
-	if product.Price < 0 {
+	if input.Price < 0 {
 		h.sendError(w, http.StatusBadRequest, "Price cannot be negative")
 		return
 	}
 
-	if product.Stock < 0 {
+	if input.Stock < 0 {
 		h.sendError(w, http.StatusBadRequest, "Stock cannot be negative")
 		return
 	}
+
+	product := input.ToProduct()
 
 	created, err := h.repo.Create(r.Context(), product)
 	if err != nil {
@@ -145,26 +147,28 @@ func (h *ProductHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 // Update updates an existing product
 func (h *ProductHandler) Update(w http.ResponseWriter, r *http.Request, id int) {
-	var product models.Product
-	if err := json.NewDecoder(r.Body).Decode(&product); err != nil {
+	var input models.ProductInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		h.sendError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
-	if product.Name == "" {
+	if input.Name == "" {
 		h.sendError(w, http.StatusBadRequest, "Name is required")
 		return
 	}
 
-	if product.Price < 0 {
+	if input.Price < 0 {
 		h.sendError(w, http.StatusBadRequest, "Price cannot be negative")
 		return
 	}
 
-	if product.Stock < 0 {
+	if input.Stock < 0 {
 		h.sendError(w, http.StatusBadRequest, "Stock cannot be negative")
 		return
 	}
+
+	product := input.ToProduct()
 
 	updated, err := h.repo.Update(r.Context(), id, product)
 	if err != nil {
