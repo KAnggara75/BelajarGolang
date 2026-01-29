@@ -4,10 +4,24 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 
+	"github.com/KAnggara75/BelajarGolang/config"
 	"github.com/KAnggara75/BelajarGolang/handlers"
 	"github.com/KAnggara75/BelajarGolang/store"
+	"github.com/spf13/viper"
 )
+
+func init() {
+	viper.AutomaticEnv()
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+
+	if _, err := os.Stat(".env"); err == nil {
+		viper.SetConfigFile(".env")
+		_ = viper.ReadInConfig()
+	}
+}
 
 func main() {
 	// Initialize the in-memory store
@@ -22,7 +36,7 @@ func main() {
 	http.Handle("/categories/", categoryHandler)
 
 	// Start server
-	port := ":8080"
+	port := config.GetPort()
 	fmt.Printf("🚀 Server starting on http://localhost%s\n", port)
 	fmt.Println("📦 Available endpoints:")
 	fmt.Println("   GET    /categories      - Get all categories")
