@@ -2,29 +2,107 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/KAnggara75/BelajarGolang/models"
-	"github.com/KAnggara75/BelajarGolang/store"
+	"github.com/KAnggara75/BelajarGolang/repository"
 )
 
-// setupTestHandler creates a fresh handler with an empty store for testing
+// mockCategoryRepository is a mock implementation of CategoryRepository for testing
+type mockCategoryRepository struct {
+	categories map[int]models.Category
+	nextID     int
+}
+
+func newMockCategoryRepository() *mockCategoryRepository {
+	return &mockCategoryRepository{
+		categories: make(map[int]models.Category),
+		nextID:     1,
+	}
+}
+
+func (m *mockCategoryRepository) GetAll(ctx context.Context) ([]models.Category, error) {
+	result := make([]models.Category, 0, len(m.categories))
+	for _, cat := range m.categories {
+		result = append(result, cat)
+	}
+	return result, nil
+}
+
+func (m *mockCategoryRepository) GetByID(ctx context.Context, id int) (models.Category, error) {
+	cat, exists := m.categories[id]
+	if !exists {
+		return models.Category{}, repository.ErrNotFound
+	}
+	return cat, nil
+}
+
+func (m *mockCategoryRepository) Create(ctx context.Context, cat models.Category) (models.Category, error) {
+	// Check if name already exists
+	for _, existing := range m.categories {
+		if existing.Name == cat.Name {
+			return models.Category{}, repository.ErrNameExists
+		}
+	}
+
+	cat.ID = m.nextID
+	m.nextID++
+	m.categories[cat.ID] = cat
+	return cat, nil
+}
+
+func (m *mockCategoryRepository) Update(ctx context.Context, id int, cat models.Category) (models.Category, error) {
+	if _, exists := m.categories[id]; !exists {
+		return models.Category{}, repository.ErrNotFound
+	}
+
+	cat.ID = id
+	m.categories[id] = cat
+	return cat, nil
+}
+
+func (m *mockCategoryRepository) Delete(ctx context.Context, id int) error {
+	if _, exists := m.categories[id]; !exists {
+		return repository.ErrNotFound
+	}
+
+	delete(m.categories, id)
+	return nil
+}
+
+// SeedData adds sample data for testing
+func (m *mockCategoryRepository) SeedData() {
+	initialData := []models.Category{
+		{Name: "Electronics", Description: "Electronic devices and gadgets"},
+		{Name: "Clothing", Description: "Apparel and fashion items"},
+		{Name: "Books", Description: "Books and reading materials"},
+		{Name: "Food & Beverages", Description: "Food products and drinks"},
+		{Name: "Sports", Description: "Sports equipment and accessories"},
+	}
+
+	for _, cat := range initialData {
+		_, _ = m.Create(context.Background(), cat)
+	}
+}
+
+// setupTestHandler creates a fresh handler with an empty mock repository for testing
 func setupTestHandler() *CategoryHandler {
-	s := store.NewCategoryStore()
-	return NewCategoryHandler(s)
+	repo := newMockCategoryRepository()
+	return NewCategoryHandler(repo)
 }
 
 // setupTestHandlerWithData creates a handler with seeded data
 func setupTestHandlerWithData() *CategoryHandler {
-	s := store.NewCategoryStore()
-	s.SeedData()
-	return NewCategoryHandler(s)
+	repo := newMockCategoryRepository()
+	repo.SeedData()
+	return NewCategoryHandler(repo)
 }
 
-// TestGetAllCategories_Empty tests GET /categories with empty store
+// TestGetAllCategories_Empty tests GET /categories with empty repo
 func TestGetAllCategories_Empty(t *testing.T) {
 	handler := setupTestHandler()
 
@@ -82,7 +160,7 @@ func TestGetAllCategories_WithData(t *testing.T) {
 		t.Error("Expected success to be true")
 	}
 
-	data, ok := response.Data.([]interface{})
+	data, ok := response.Data.([]any)
 	if !ok {
 		t.Fatalf("Expected data to be an array, got %T", response.Data)
 	}
@@ -118,7 +196,7 @@ func TestGetCategoryByID_Success(t *testing.T) {
 	}
 
 	// Check category data
-	data, ok := response.Data.(map[string]interface{})
+	data, ok := response.Data.(map[string]any)
 	if !ok {
 		t.Fatalf("Expected data to be an object, got %T", response.Data)
 	}
@@ -216,7 +294,7 @@ func TestCreateCategory_Success(t *testing.T) {
 	}
 
 	// Check that ID was assigned
-	data, ok := response.Data.(map[string]interface{})
+	data, ok := response.Data.(map[string]any)
 	if !ok {
 		t.Fatalf("Expected data to be an object, got %T", response.Data)
 	}
@@ -359,7 +437,7 @@ func TestUpdateCategory_Success(t *testing.T) {
 		t.Errorf("Expected message 'Category updated successfully', got '%s'", response.Message)
 	}
 
-	data, ok := response.Data.(map[string]interface{})
+	data, ok := response.Data.(map[string]any)
 	if !ok {
 		t.Fatalf("Expected data to be an object, got %T", response.Data)
 	}
@@ -656,7 +734,7 @@ func TestCRUDFlow(t *testing.T) {
 		t.Fatalf("Failed to decode verify response: %v", err)
 	}
 
-	data := verifyResponse.Data.(map[string]interface{})
+	data := verifyResponse.Data.(map[string]any)
 	if data["name"] != "Updated Category" {
 		t.Errorf("Update not persisted: expected 'Updated Category', got '%v'", data["name"])
 	}

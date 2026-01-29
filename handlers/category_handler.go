@@ -7,15 +7,15 @@ import (
 	"strings"
 
 	"github.com/KAnggara75/BelajarGolang/models"
-	"github.com/KAnggara75/BelajarGolang/store"
+	"github.com/KAnggara75/BelajarGolang/repository"
 )
 
 type CategoryHandler struct {
-	store *store.CategoryStore
+	repo repository.CategoryRepository
 }
 
-func NewCategoryHandler(s *store.CategoryStore) *CategoryHandler {
-	return &CategoryHandler{store: s}
+func NewCategoryHandler(repo repository.CategoryRepository) *CategoryHandler {
+	return &CategoryHandler{repo: repo}
 }
 
 type Response struct {
@@ -64,15 +64,23 @@ func (h *CategoryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // GetAll returns all categories
 func (h *CategoryHandler) GetAll(w http.ResponseWriter, r *http.Request) {
-	categories := h.store.GetAll()
+	categories, err := h.repo.GetAll(r.Context())
+	if err != nil {
+		h.sendError(w, http.StatusInternalServerError, "Failed to retrieve categories")
+		return
+	}
 	h.sendSuccess(w, http.StatusOK, "Categories retrieved successfully", categories)
 }
 
 // GetByID returns a single category
 func (h *CategoryHandler) GetByID(w http.ResponseWriter, r *http.Request, id int) {
-	category, err := h.store.GetByID(id)
+	category, err := h.repo.GetByID(r.Context(), id)
 	if err != nil {
-		h.sendError(w, http.StatusNotFound, "Category not found")
+		if err == repository.ErrNotFound {
+			h.sendError(w, http.StatusNotFound, "Category not found")
+			return
+		}
+		h.sendError(w, http.StatusInternalServerError, "Failed to retrieve category")
 		return
 	}
 	h.sendSuccess(w, http.StatusOK, "Category retrieved successfully", category)
@@ -91,9 +99,9 @@ func (h *CategoryHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	created, err := h.store.Create(cat)
+	created, err := h.repo.Create(r.Context(), cat)
 	if err != nil {
-		if err == store.ErrNameExists {
+		if err == repository.ErrNameExists {
 			h.sendError(w, http.StatusConflict, "Category name already exists")
 			return
 		}
@@ -116,9 +124,13 @@ func (h *CategoryHandler) Update(w http.ResponseWriter, r *http.Request, id int)
 		return
 	}
 
-	updated, err := h.store.Update(id, cat)
+	updated, err := h.repo.Update(r.Context(), id, cat)
 	if err != nil {
-		h.sendError(w, http.StatusNotFound, "Category not found")
+		if err == repository.ErrNotFound {
+			h.sendError(w, http.StatusNotFound, "Category not found")
+			return
+		}
+		h.sendError(w, http.StatusInternalServerError, "Failed to update category")
 		return
 	}
 	h.sendSuccess(w, http.StatusOK, "Category updated successfully", updated)
@@ -126,8 +138,12 @@ func (h *CategoryHandler) Update(w http.ResponseWriter, r *http.Request, id int)
 
 // Delete removes a category
 func (h *CategoryHandler) Delete(w http.ResponseWriter, r *http.Request, id int) {
-	if err := h.store.Delete(id); err != nil {
-		h.sendError(w, http.StatusNotFound, "Category not found")
+	if err := h.repo.Delete(r.Context(), id); err != nil {
+		if err == repository.ErrNotFound {
+			h.sendError(w, http.StatusNotFound, "Category not found")
+			return
+		}
+		h.sendError(w, http.StatusInternalServerError, "Failed to delete category")
 		return
 	}
 	h.sendSuccess(w, http.StatusOK, "Category deleted successfully", nil)

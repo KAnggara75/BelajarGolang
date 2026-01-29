@@ -11,7 +11,7 @@ import (
 	"github.com/KAnggara75/BelajarGolang/config"
 	"github.com/KAnggara75/BelajarGolang/database"
 	"github.com/KAnggara75/BelajarGolang/handlers"
-	"github.com/KAnggara75/BelajarGolang/store"
+	"github.com/KAnggara75/BelajarGolang/repository"
 	"github.com/spf13/viper"
 )
 
@@ -33,12 +33,21 @@ func main() {
 	}
 	defer db.Close(context.Background())
 
-	// Initialize the in-memory store
-	categoryStore := store.NewCategoryStore()
-	categoryStore.SeedData()
+	// Run migrations
+	if err := database.RunMigrations(db); err != nil {
+		log.Fatal("Failed to run migrations:", err)
+	}
+
+	// Seed initial data
+	if err := database.SeedCategories(db); err != nil {
+		log.Fatal("Failed to seed database:", err)
+	}
+
+	// Initialize repository
+	categoryRepo := repository.NewCategoryRepository(db)
 
 	// Initialize handlers
-	categoryHandler := handlers.NewCategoryHandler(categoryStore)
+	categoryHandler := handlers.NewCategoryHandler(categoryRepo)
 
 	// Setup routes
 	http.Handle("/categories", categoryHandler)
