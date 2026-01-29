@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -8,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/KAnggara75/BelajarGolang/config"
+	"github.com/KAnggara75/BelajarGolang/database"
 	"github.com/KAnggara75/BelajarGolang/handlers"
 	"github.com/KAnggara75/BelajarGolang/store"
 	"github.com/spf13/viper"
@@ -24,6 +26,13 @@ func init() {
 }
 
 func main() {
+	// Initialize database
+	db, err := database.InitDB(config.GetDatabaseURL())
+	if err != nil {
+		log.Fatal("Failed to connect to database:", err)
+	}
+	defer db.Close(context.Background())
+
 	// Initialize the in-memory store
 	categoryStore := store.NewCategoryStore()
 	categoryStore.SeedData()
