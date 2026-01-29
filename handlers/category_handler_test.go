@@ -299,6 +299,10 @@ func TestCreateCategory_Success(t *testing.T) {
 		t.Fatalf("Expected data to be an object, got %T", response.Data)
 	}
 
+	if data["id"].(float64) != 1 {
+		t.Errorf("Expected ID 1, got %v", data["id"])
+	}
+
 	if data["name"] != "Test Category" {
 		t.Errorf("Expected name 'Test Category', got '%v'", data["name"])
 	}
