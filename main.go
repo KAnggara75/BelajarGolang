@@ -26,8 +26,14 @@ func init() {
 }
 
 func main() {
+	// Get database URL
+	dbURL := config.GetDatabaseURL()
+	if dbURL == "" {
+		log.Fatal("DATABASE_URL is not set. Please set DATABASE_URL environment variable or add it to .env file")
+	}
+
 	// Initialize database
-	db, err := database.InitDB(config.GetDatabaseURL())
+	db, err := database.InitDB(dbURL)
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
