@@ -1,5 +1,9 @@
 # BelajarGolang API
 
+[![CI](https://github.com/KAnggara75/BelajarGolang/actions/workflows/ci.yml/badge.svg)](https://github.com/KAnggara75/BelajarGolang/actions/workflows/ci.yml)
+[![Go Tests](https://github.com/KAnggara75/BelajarGolang/actions/workflows/test.yml/badge.svg)](https://github.com/KAnggara75/BelajarGolang/actions/workflows/test.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/KAnggara75/BelajarGolang)](https://goreportcard.com/report/github.com/KAnggara75/BelajarGolang)
+
 A RESTful API built with Go for managing categories and products.
 
 ## Features
@@ -175,6 +179,37 @@ Run specific test:
 go test ./handlers -v -run TestRootHandler
 ```
 
+Run tests with coverage:
+```bash
+go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+go tool cover -html=coverage.out
+```
+
+## CI/CD
+
+This project uses GitHub Actions for continuous integration and testing:
+
+- **CI Workflow** (`.github/workflows/ci.yml`): Runs on every push and pull request
+  - Tests against Go 1.21 and 1.22
+  - Runs all tests with race detection
+  - Builds the application
+
+- **Test Workflow** (`.github/workflows/test.yml`): Comprehensive testing
+  - Runs all tests with coverage reporting
+  - Uploads coverage to Codecov
+  - Runs `go vet` for static analysis
+  - Runs golangci-lint for code quality
+
+### Running Linter Locally
+
+```bash
+# Install golangci-lint
+go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+# Run linter
+golangci-lint run
+```
+
 ## Project Structure
 
 ```
@@ -192,6 +227,7 @@ BelajarGolang/
 
 - [Search by Name Feature](SEARCH_BY_NAME.md)
 - [Root and Health Endpoints](ROOT_AND_HEALTH.md)
+- [GitHub Actions CI/CD](GITHUB_ACTIONS.md)
 
 ## Environment Variables
 
