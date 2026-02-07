@@ -12,6 +12,8 @@ A RESTful API built with Go for managing categories and products.
 - ✅ **Transaction System** with atomic checkout operations
 - ✅ **Race Condition Prevention** using database row-level locking
 - ✅ **Stock Management** with automatic inventory updates
+- ✅ **Sales Reports** with daily and period analytics
+- ✅ **Revenue Tracking** and best-selling product identification
 - ✅ **Search by Name** with partial, case-insensitive matching
 - ✅ **Filter Products** by category
 - ✅ **Health Check** endpoint for monitoring
@@ -86,6 +88,13 @@ The server will start on `http://localhost:8080`
 | POST | `/transactions/checkout` | Create a new transaction (checkout) |
 | GET | `/transactions` | Get all transactions |
 | GET | `/transactions/{id}` | Get a transaction by ID |
+
+### Reports
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/report/hari-ini` | Get today's sales report |
+| GET | `/api/report?start_date={date}&end_date={date}` | Get period sales report |
 
 ## Examples
 
@@ -163,6 +172,16 @@ curl http://localhost:8080/transactions
 ### Get Transaction by ID
 ```bash
 curl http://localhost:8080/transactions/1
+```
+
+### Get Today's Sales Report
+```bash
+curl http://localhost:8080/api/report/hari-ini
+```
+
+### Get Period Sales Report
+```bash
+curl "http://localhost:8080/api/report?start_date=2026-01-01&end_date=2026-02-01"
 ```
 
 ## Response Format
@@ -261,6 +280,7 @@ BelajarGolang/
 - [Search by Name Feature](SEARCH_BY_NAME.md)
 - [Root and Health Endpoints](ROOT_AND_HEALTH.md)
 - [Transaction System](TRANSACTIONS.md)
+- [Sales Reports](REPORTS.md)
 - [GitHub Actions CI/CD](GITHUB_ACTIONS.md)
 
 ## Environment Variables

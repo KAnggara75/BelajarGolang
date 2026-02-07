@@ -56,6 +56,7 @@ func main() {
 	categoryRepo := repository.NewCategoryRepository(db)
 	productRepo := repository.NewProductRepository(db)
 	transactionRepo := repository.NewTransactionRepository(db)
+	reportRepo := repository.NewReportRepository(db)
 
 	// Initialize handlers
 	rootHandler := handlers.NewRootHandler()
@@ -63,6 +64,7 @@ func main() {
 	categoryHandler := handlers.NewCategoryHandler(categoryRepo)
 	productHandler := handlers.NewProductHandler(productRepo)
 	transactionHandler := handlers.NewTransactionHandler(transactionRepo)
+	reportHandler := handlers.NewReportHandler(reportRepo)
 
 	// Setup routes
 	http.Handle("/", rootHandler)
@@ -73,6 +75,8 @@ func main() {
 	http.Handle("/products/", productHandler)
 	http.Handle("/transactions", transactionHandler)
 	http.Handle("/transactions/", transactionHandler)
+	http.Handle("/api/report", reportHandler)
+	http.Handle("/api/report/", reportHandler)
 
 	// Start server
 	port := config.GetPort()
@@ -99,6 +103,9 @@ func main() {
 	fmt.Println("   POST   /transactions/checkout - Create a new transaction (checkout)")
 	fmt.Println("   GET    /transactions    - Get all transactions")
 	fmt.Println("   GET    /transactions/{id} - Get a transaction by ID")
+	fmt.Println("")
+	fmt.Println("   GET    /api/report/hari-ini - Get today's sales report")
+	fmt.Println("   GET    /api/report?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD - Get period report")
 
 	if err := http.ListenAndServe(port, nil); err != nil {
 		log.Fatal(err)

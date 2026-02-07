@@ -57,6 +57,8 @@ func (h *RootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"POST   /transactions/checkout - Create a new transaction (checkout)",
 			"GET    /transactions    - Get all transactions",
 			"GET    /transactions/{id} - Get a transaction by ID",
+			"GET    /api/report/hari-ini - Get today's sales report",
+			"GET    /api/report?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD - Get period report",
 		},
 	}
 
