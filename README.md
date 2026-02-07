@@ -1,0 +1,231 @@
+# BelajarGolang API
+
+A RESTful API built with Go for managing categories and products.
+
+## Features
+
+- ✅ **CRUD Operations** for Categories and Products
+- ✅ **Search by Name** with partial, case-insensitive matching
+- ✅ **Filter Products** by category
+- ✅ **Health Check** endpoint for monitoring
+- ✅ **API Information** endpoint
+- ✅ **PostgreSQL** database with migrations
+- ✅ **Comprehensive Tests** with high coverage
+
+## Quick Start
+
+### Prerequisites
+
+- Go 1.21 or higher
+- PostgreSQL database
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd BelajarGolang
+```
+
+2. Set up environment variables:
+```bash
+cp .env.example .env
+# Edit .env and set your DATABASE_URL
+```
+
+3. Run the application:
+```bash
+go run main.go
+```
+
+The server will start on `http://localhost:8080`
+
+## API Endpoints
+
+### General
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/` | API information and available endpoints |
+| GET | `/health` | Health check for monitoring |
+
+### Categories
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/categories` | Get all categories |
+| GET | `/categories?name={name}` | Search categories by name (partial match) |
+| GET | `/categories/{id}` | Get a category by ID |
+| POST | `/categories` | Create a new category |
+| PUT | `/categories/{id}` | Update a category |
+| DELETE | `/categories/{id}` | Delete a category |
+
+### Products
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/products` | Get all products |
+| GET | `/products?name={name}` | Search products by name (partial match) |
+| GET | `/products?category_id={id}` | Get products by category |
+| GET | `/products/{id}` | Get a product by ID |
+| POST | `/products` | Create a new product |
+| PUT | `/products/{id}` | Update a product |
+| DELETE | `/products/{id}` | Delete a product |
+
+## Examples
+
+### Get API Information
+```bash
+curl http://localhost:8080/
+```
+
+### Health Check
+```bash
+curl http://localhost:8080/health
+```
+
+### Get All Categories
+```bash
+curl http://localhost:8080/categories
+```
+
+### Search Categories by Name
+```bash
+curl http://localhost:8080/categories?name=Elect
+```
+
+### Get All Products
+```bash
+curl http://localhost:8080/products
+```
+
+### Search Products by Name
+```bash
+curl http://localhost:8080/products?name=MacBook
+```
+
+### Filter Products by Category
+```bash
+curl http://localhost:8080/products?category_id=1
+```
+
+### Create a Category
+```bash
+curl -X POST http://localhost:8080/categories \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Books","description":"Books and magazines"}'
+```
+
+### Create a Product
+```bash
+curl -X POST http://localhost:8080/products \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name":"iPhone 15 Pro",
+    "price":999.99,
+    "stock":50,
+    "category_id":1
+  }'
+```
+
+## Response Format
+
+All API responses follow this format:
+
+**Success Response:**
+```json
+{
+  "success": true,
+  "message": "Operation successful",
+  "data": { ... }
+}
+```
+
+**Error Response:**
+```json
+{
+  "success": false,
+  "message": "Error description"
+}
+```
+
+## Search Feature
+
+The search endpoints support:
+- **Partial matching**: "Mac" matches "MacBook Pro"
+- **Case-insensitive**: "iphone" matches "iPhone 15 Pro"
+- **Multiple results**: Returns all matching items as an array
+- **404 on empty**: Returns 404 if no matches found
+
+## Testing
+
+Run all tests:
+```bash
+go test ./...
+```
+
+Run specific test package:
+```bash
+go test ./handlers -v
+go test ./repository -v
+```
+
+Run specific test:
+```bash
+go test ./handlers -v -run TestRootHandler
+```
+
+## Project Structure
+
+```
+BelajarGolang/
+├── config/          # Configuration management
+├── database/        # Database connection and migrations
+├── handlers/        # HTTP request handlers
+├── models/          # Data models
+├── repository/      # Data access layer
+├── main.go          # Application entry point
+└── README.md        # This file
+```
+
+## Documentation
+
+- [Search by Name Feature](SEARCH_BY_NAME.md)
+- [Root and Health Endpoints](ROOT_AND_HEALTH.md)
+
+## Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DATABASE_URL` | PostgreSQL connection string | Required |
+| `PORT` | Server port | `:8080` |
+
+## Database Schema
+
+### Categories Table
+```sql
+CREATE TABLE categories (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT
+);
+```
+
+### Products Table
+```sql
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(200) NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    stock INTEGER NOT NULL DEFAULT 0,
+    category_id INTEGER REFERENCES categories(id)
+);
+```
+
+## License
+
+MIT License
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.

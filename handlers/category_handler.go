@@ -30,6 +30,15 @@ func (h *CategoryHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/categories")
 	path = strings.TrimPrefix(path, "/")
 
+	// Check for query parameter to search by name
+	if path == "" && r.Method == http.MethodGet {
+		nameParam := r.URL.Query().Get("name")
+		if nameParam != "" {
+			h.GetByName(w, r, nameParam)
+			return
+		}
+	}
+
 	if path == "" {
 		// Handle collection routes: GET /categories, POST /categories
 		switch r.Method {
@@ -84,6 +93,23 @@ func (h *CategoryHandler) GetByID(w http.ResponseWriter, r *http.Request, id int
 		return
 	}
 	h.sendSuccess(w, http.StatusOK, "Category retrieved successfully", category)
+}
+
+// GetByName returns categories matching the search term
+func (h *CategoryHandler) GetByName(w http.ResponseWriter, r *http.Request, name string) {
+	categories, err := h.repo.GetByName(r.Context(), name)
+	if err != nil {
+		h.sendError(w, http.StatusInternalServerError, "Failed to retrieve categories")
+		return
+	}
+
+	// Return 404 if no categories found
+	if len(categories) == 0 {
+		h.sendError(w, http.StatusNotFound, "Category not found")
+		return
+	}
+
+	h.sendSuccess(w, http.StatusOK, "Categories retrieved successfully", categories)
 }
 
 // Create adds a new category

@@ -17,6 +17,7 @@ var (
 type CategoryRepository interface {
 	GetAll(ctx context.Context) ([]models.Category, error)
 	GetByID(ctx context.Context, id int) (models.Category, error)
+	GetByName(ctx context.Context, name string) ([]models.Category, error)
 	Create(ctx context.Context, cat models.Category) (models.Category, error)
 	Update(ctx context.Context, id int, cat models.Category) (models.Category, error)
 	Delete(ctx context.Context, id int) error
@@ -77,6 +78,37 @@ func (r *categoryRepository) GetByID(ctx context.Context, id int) (models.Catego
 	}
 
 	return cat, nil
+}
+
+// GetByName returns all categories matching the name (case-insensitive partial match)
+func (r *categoryRepository) GetByName(ctx context.Context, name string) ([]models.Category, error) {
+	query := `SELECT id, name, description FROM categories WHERE name ILIKE '%' || $1 || '%' ORDER BY id`
+
+	rows, err := r.db.Query(ctx, query, name)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var categories []models.Category
+	for rows.Next() {
+		var cat models.Category
+		if err := rows.Scan(&cat.ID, &cat.Name, &cat.Description); err != nil {
+			return nil, err
+		}
+		categories = append(categories, cat)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Return empty slice instead of nil
+	if categories == nil {
+		categories = []models.Category{}
+	}
+
+	return categories, nil
 }
 
 // Create adds a new category to the database

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/KAnggara75/BelajarGolang/models"
@@ -34,6 +35,18 @@ func (m *mockRepository) GetByID(ctx context.Context, id int) (models.Category, 
 		return models.Category{}, ErrNotFound
 	}
 	return cat, nil
+}
+
+func (m *mockRepository) GetByName(ctx context.Context, name string) ([]models.Category, error) {
+	// Case-insensitive partial match
+	nameLower := strings.ToLower(name)
+	var results []models.Category
+	for _, cat := range m.categories {
+		if strings.Contains(strings.ToLower(cat.Name), nameLower) {
+			results = append(results, cat)
+		}
+	}
+	return results, nil
 }
 
 func (m *mockRepository) Create(ctx context.Context, cat models.Category) (models.Category, error) {

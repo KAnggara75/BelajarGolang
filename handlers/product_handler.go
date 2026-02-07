@@ -26,6 +26,14 @@ func (h *ProductHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Check for query parameter to filter by category
 	if path == "" && r.Method == http.MethodGet {
+		// Check for name search parameter
+		nameParam := r.URL.Query().Get("name")
+		if nameParam != "" {
+			h.GetByName(w, r, nameParam)
+			return
+		}
+
+		// Check for category filter parameter
 		categoryIDStr := r.URL.Query().Get("category_id")
 		if categoryIDStr != "" {
 			categoryID, err := strconv.Atoi(categoryIDStr)
@@ -102,6 +110,23 @@ func (h *ProductHandler) GetByID(w http.ResponseWriter, r *http.Request, id int)
 		return
 	}
 	h.sendSuccess(w, http.StatusOK, "Product retrieved successfully", product)
+}
+
+// GetByName returns products matching the search term
+func (h *ProductHandler) GetByName(w http.ResponseWriter, r *http.Request, name string) {
+	products, err := h.repo.GetByName(r.Context(), name)
+	if err != nil {
+		h.sendError(w, http.StatusInternalServerError, "Failed to retrieve products")
+		return
+	}
+
+	// Return 404 if no products found
+	if len(products) == 0 {
+		h.sendError(w, http.StatusNotFound, "Product not found")
+		return
+	}
+
+	h.sendSuccess(w, http.StatusOK, "Products retrieved successfully", products)
 }
 
 // Create adds a new product

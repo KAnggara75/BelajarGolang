@@ -18,6 +18,7 @@ var (
 type ProductRepository interface {
 	GetAll(ctx context.Context) ([]models.Product, error)
 	GetByID(ctx context.Context, id int) (models.Product, error)
+	GetByName(ctx context.Context, name string) ([]models.Product, error)
 	GetByCategory(ctx context.Context, categoryID int) ([]models.Product, error)
 	Create(ctx context.Context, product models.Product) (models.Product, error)
 	Update(ctx context.Context, id int, product models.Product) (models.Product, error)
@@ -122,6 +123,60 @@ func (r *productRepository) GetByID(ctx context.Context, id int) (models.Product
 	}
 
 	return p, nil
+}
+
+// GetByName returns all products matching the name (case-insensitive partial match) with category
+func (r *productRepository) GetByName(ctx context.Context, name string) ([]models.Product, error) {
+	query := `
+		SELECT p.id, p.name, p.price, p.stock, COALESCE(p.category_id, 0),
+		       c.id, c.name, c.description
+		FROM products p
+		LEFT JOIN categories c ON p.category_id = c.id
+		WHERE p.name ILIKE '%' || $1 || '%'
+		ORDER BY p.id
+	`
+
+	rows, err := r.db.Query(ctx, query, name)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var products []models.Product
+	for rows.Next() {
+		var p models.Product
+		var catID *int
+		var catName, catDesc *string
+
+		if err := rows.Scan(&p.ID, &p.Name, &p.Price, &p.Stock, &p.CategoryID,
+			&catID, &catName, &catDesc); err != nil {
+			return nil, err
+		}
+
+		// Attach category if exists
+		if catID != nil && catName != nil {
+			p.Category = &models.Category{
+				ID:   *catID,
+				Name: *catName,
+			}
+			if catDesc != nil {
+				p.Category.Description = *catDesc
+			}
+		}
+
+		products = append(products, p)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Return empty slice instead of nil
+	if products == nil {
+		products = []models.Product{}
+	}
+
+	return products, nil
 }
 
 // GetByCategory returns all products for a specific category

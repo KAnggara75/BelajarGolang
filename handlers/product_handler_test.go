@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/KAnggara75/BelajarGolang/models"
@@ -53,6 +54,24 @@ func (m *mockProductRepository) GetByID(ctx context.Context, id int) (models.Pro
 		}
 	}
 	return p, nil
+}
+
+func (m *mockProductRepository) GetByName(ctx context.Context, name string) ([]models.Product, error) {
+	// Case-insensitive partial match
+	nameLower := strings.ToLower(name)
+	var results []models.Product
+	for _, p := range m.products {
+		if strings.Contains(strings.ToLower(p.Name), nameLower) {
+			// Attach category if exists
+			if p.CategoryID > 0 {
+				if cat, ok := m.categories[p.CategoryID]; ok {
+					p.Category = &cat
+				}
+			}
+			results = append(results, p)
+		}
+	}
+	return results, nil
 }
 
 func (m *mockProductRepository) GetByCategory(ctx context.Context, categoryID int) ([]models.Product, error) {
