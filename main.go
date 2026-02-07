@@ -55,12 +55,14 @@ func main() {
 	// Initialize repositories
 	categoryRepo := repository.NewCategoryRepository(db)
 	productRepo := repository.NewProductRepository(db)
+	transactionRepo := repository.NewTransactionRepository(db)
 
 	// Initialize handlers
 	rootHandler := handlers.NewRootHandler()
 	healthHandler := handlers.NewHealthHandler()
 	categoryHandler := handlers.NewCategoryHandler(categoryRepo)
 	productHandler := handlers.NewProductHandler(productRepo)
+	transactionHandler := handlers.NewTransactionHandler(transactionRepo)
 
 	// Setup routes
 	http.Handle("/", rootHandler)
@@ -69,6 +71,8 @@ func main() {
 	http.Handle("/categories/", categoryHandler)
 	http.Handle("/products", productHandler)
 	http.Handle("/products/", productHandler)
+	http.Handle("/transactions", transactionHandler)
+	http.Handle("/transactions/", transactionHandler)
 
 	// Start server
 	port := config.GetPort()
@@ -91,6 +95,10 @@ func main() {
 	fmt.Println("   GET    /products?category_id={id} - Get products by category")
 	fmt.Println("   PUT    /products/{id}   - Update a product")
 	fmt.Println("   DELETE /products/{id}   - Delete a product")
+	fmt.Println("")
+	fmt.Println("   POST   /transactions/checkout - Create a new transaction (checkout)")
+	fmt.Println("   GET    /transactions    - Get all transactions")
+	fmt.Println("   GET    /transactions/{id} - Get a transaction by ID")
 
 	if err := http.ListenAndServe(port, nil); err != nil {
 		log.Fatal(err)

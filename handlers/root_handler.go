@@ -54,6 +54,9 @@ func (h *RootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"GET    /products?category_id={id} - Get products by category",
 			"PUT    /products/{id} - Update a product",
 			"DELETE /products/{id} - Delete a product",
+			"POST   /transactions/checkout - Create a new transaction (checkout)",
+			"GET    /transactions    - Get all transactions",
+			"GET    /transactions/{id} - Get a transaction by ID",
 		},
 	}
 

@@ -27,15 +27,27 @@ func RunMigrations(db *pgx.Conn) error {
 			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		)`,
 		// Add category_id column if it doesn't exist (for existing databases)
-		`DO $$ 
+		`DO $$
 		BEGIN
 			IF NOT EXISTS (
-				SELECT 1 FROM information_schema.columns 
+				SELECT 1 FROM information_schema.columns
 				WHERE table_name = 'products' AND column_name = 'category_id'
 			) THEN
 				ALTER TABLE products ADD COLUMN category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL;
 			END IF;
 		END $$`,
+		`CREATE TABLE IF NOT EXISTS transactions (
+			id SERIAL PRIMARY KEY,
+			total_amount INT NOT NULL,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS transaction_details (
+			id SERIAL PRIMARY KEY,
+			transaction_id INT REFERENCES transactions(id) ON DELETE CASCADE,
+			product_id INT REFERENCES products(id),
+			quantity INT NOT NULL,
+			subtotal INT NOT NULL
+		)`,
 	}
 
 	for _, migration := range migrations {

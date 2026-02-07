@@ -9,6 +9,9 @@ A RESTful API built with Go for managing categories and products.
 ## Features
 
 - ✅ **CRUD Operations** for Categories and Products
+- ✅ **Transaction System** with atomic checkout operations
+- ✅ **Race Condition Prevention** using database row-level locking
+- ✅ **Stock Management** with automatic inventory updates
 - ✅ **Search by Name** with partial, case-insensitive matching
 - ✅ **Filter Products** by category
 - ✅ **Health Check** endpoint for monitoring
@@ -76,6 +79,14 @@ The server will start on `http://localhost:8080`
 | PUT | `/products/{id}` | Update a product |
 | DELETE | `/products/{id}` | Delete a product |
 
+### Transactions
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/transactions/checkout` | Create a new transaction (checkout) |
+| GET | `/transactions` | Get all transactions |
+| GET | `/transactions/{id}` | Get a transaction by ID |
+
 ## Examples
 
 ### Get API Information
@@ -130,6 +141,28 @@ curl -X POST http://localhost:8080/products \
     "stock":50,
     "category_id":1
   }'
+```
+
+### Checkout (Create Transaction)
+```bash
+curl -X POST http://localhost:8080/transactions/checkout \
+  -H "Content-Type: application/json" \
+  -d '{
+    "items": [
+      {"product_id": 1, "quantity": 2},
+      {"product_id": 3, "quantity": 1}
+    ]
+  }'
+```
+
+### Get All Transactions
+```bash
+curl http://localhost:8080/transactions
+```
+
+### Get Transaction by ID
+```bash
+curl http://localhost:8080/transactions/1
 ```
 
 ## Response Format
@@ -227,6 +260,7 @@ BelajarGolang/
 
 - [Search by Name Feature](SEARCH_BY_NAME.md)
 - [Root and Health Endpoints](ROOT_AND_HEALTH.md)
+- [Transaction System](TRANSACTIONS.md)
 - [GitHub Actions CI/CD](GITHUB_ACTIONS.md)
 
 ## Environment Variables
@@ -255,6 +289,26 @@ CREATE TABLE products (
     price DECIMAL(10, 2) NOT NULL,
     stock INTEGER NOT NULL DEFAULT 0,
     category_id INTEGER REFERENCES categories(id)
+);
+```
+
+### Transactions Table
+```sql
+CREATE TABLE transactions (
+    id SERIAL PRIMARY KEY,
+    total_amount INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### Transaction Details Table
+```sql
+CREATE TABLE transaction_details (
+    id SERIAL PRIMARY KEY,
+    transaction_id INT REFERENCES transactions(id) ON DELETE CASCADE,
+    product_id INT REFERENCES products(id),
+    quantity INT NOT NULL,
+    subtotal INT NOT NULL
 );
 ```
 
