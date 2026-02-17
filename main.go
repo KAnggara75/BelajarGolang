@@ -11,6 +11,8 @@ import (
 	"github.com/KAnggara75/BelajarGolang/config"
 	"github.com/KAnggara75/BelajarGolang/database"
 	"github.com/KAnggara75/BelajarGolang/handlers"
+	"github.com/KAnggara75/BelajarGolang/middleware"
+	"github.com/KAnggara75/BelajarGolang/otel"
 	"github.com/KAnggara75/BelajarGolang/repository"
 	"github.com/spf13/viper"
 )
@@ -39,6 +41,27 @@ func main() {
 	}
 	defer db.Close(context.Background())
 
+	// Initialize OpenTelemetry
+	tracerProvider, err := otel.InitTracer(otel.Config{
+		ServiceName:    config.GetServiceName(),
+		ServiceVersion: config.GetServiceVersion(),
+		Environment:    config.GetEnvironment(),
+		OTLPEndpoint:   config.GetOTLPEndpoint(),
+		Enabled:        config.IsOTelEnabled(),
+	})
+	if err != nil {
+		log.Printf("Warning: Failed to initialize OpenTelemetry: %v", err)
+	} else {
+		defer func() {
+			if err := tracerProvider.Shutdown(context.Background()); err != nil {
+				log.Printf("Error shutting down tracer provider: %v", err)
+			}
+		}()
+		if config.IsOTelEnabled() {
+			log.Println("✨ OpenTelemetry tracing enabled")
+		}
+	}
+
 	// Run migrations
 	if err := database.RunMigrations(db); err != nil {
 		log.Fatal("Failed to run migrations:", err)
@@ -66,17 +89,17 @@ func main() {
 	transactionHandler := handlers.NewTransactionHandler(transactionRepo)
 	reportHandler := handlers.NewReportHandler(reportRepo)
 
-	// Setup routes
-	http.Handle("/", rootHandler)
-	http.Handle("/health", healthHandler)
-	http.Handle("/categories", categoryHandler)
-	http.Handle("/categories/", categoryHandler)
-	http.Handle("/products", productHandler)
-	http.Handle("/products/", productHandler)
-	http.Handle("/transactions", transactionHandler)
-	http.Handle("/transactions/", transactionHandler)
-	http.Handle("/api/report", reportHandler)
-	http.Handle("/api/report/", reportHandler)
+	// Setup routes with tracing middleware
+	http.Handle(middleware.WrapHandler("/", rootHandler))
+	http.Handle(middleware.WrapHandler("/health", healthHandler))
+	http.Handle(middleware.WrapHandler("/categories", categoryHandler))
+	http.Handle(middleware.WrapHandler("/categories/", categoryHandler))
+	http.Handle(middleware.WrapHandler("/products", productHandler))
+	http.Handle(middleware.WrapHandler("/products/", productHandler))
+	http.Handle(middleware.WrapHandler("/transactions", transactionHandler))
+	http.Handle(middleware.WrapHandler("/transactions/", transactionHandler))
+	http.Handle(middleware.WrapHandler("/api/report", reportHandler))
+	http.Handle(middleware.WrapHandler("/api/report/", reportHandler))
 
 	// Start server
 	port := config.GetPort()
